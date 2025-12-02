@@ -7,6 +7,12 @@ const Signin = () => {
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // 로그인 API 연동 해야함
+    console.log("로그인 시도:", { userId, password });
+  };
+
   const goSignup = () => navigate("/signup");
 
   return (
