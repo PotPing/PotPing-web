@@ -287,6 +287,10 @@ export default function Report() {
       ? result.potholeCount > 0
       : false;
 
+  // 버튼 비활성화 조건
+  const isStartDisabled = isDriving || isFetchingResult || hasResult;
+  const isStopDisabled = !isDriving || isFetchingResult || hasResult;
+
   return (
     <div className="min-h-screen bg-[#0B1320] text-white">
       {/* 상단 헤더 */}
@@ -323,9 +327,9 @@ export default function Report() {
                 <select
                   value={province}
                   onChange={handleProvinceChange}
-                  disabled={isDriving || isFetchingResult}
+                  disabled={isDriving || isFetchingResult || hasResult}
                   className={`w-full h-11 bg-[#111827] border border-[#4B5563] rounded-md px-4 pr-9 text-sm text-white appearance-none focus:outline-none ${
-                    isDriving || isFetchingResult
+                    isDriving || isFetchingResult || hasResult
                       ? "opacity-60 cursor-not-allowed"
                       : ""
                   }`}
@@ -351,9 +355,9 @@ export default function Report() {
                 <select
                   value={city}
                   onChange={handleCityChange}
-                  disabled={isDriving || isFetchingResult}
+                  disabled={isDriving || isFetchingResult || hasResult}
                   className={`w-full h-11 bg-[#111827] border border-[#4B5563] rounded-md px-4 pr-9 text-sm text-white appearance-none focus:outline-none ${
-                    isDriving || isFetchingResult
+                    isDriving || isFetchingResult || hasResult
                       ? "opacity-60 cursor-not-allowed"
                       : ""
                   }`}
@@ -376,11 +380,11 @@ export default function Report() {
             <button
               type="button"
               onClick={handleStartDriving}
-              disabled={isDriving || isFetchingResult}
-              className={`min-w-[140px] h-11 rounded-md text-sm font-semibold transition cursor-pointer ${
-                isDriving || isFetchingResult
-                  ? "bg-gray-600 text-gray-300 cursor-not-allowed"
-                  : "bg-orange-500 hover:bg-orange-600 text-white"
+              disabled={isStartDisabled}
+              className={`min-w-[140px] h-11 rounded-md text-sm font-semibold transition ${
+                isStartDisabled
+                  ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                  : "bg-orange-500 hover:bg-orange-600 text-white cursor-pointer"
               }`}
             >
               주행 시작
@@ -389,11 +393,11 @@ export default function Report() {
             <button
               type="button"
               onClick={handleStopDriving}
-              disabled={!isDriving || isFetchingResult}
-              className={`min-w-[140px] h-11 rounded-md text-sm font-semibold transition cursor-pointer ${
-                !isDriving || isFetchingResult
+              disabled={isStopDisabled}
+              className={`min-w-[140px] h-11 rounded-md text-sm font-semibold transition ${
+                isStopDisabled
                   ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                  : "bg-red-500 hover:bg-red-600 text-white"
+                  : "bg-red-500 hover:bg-red-600 text-white cursor-pointer"
               }`}
             >
               주행 종료
