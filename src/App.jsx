@@ -4,6 +4,7 @@ import Landing from "./pages/Landing";
 import Signin from "./pages/Signin";
 import Signup from "./pages/Signup";
 import Report from "./pages/Report";
+import MyReports from "./pages/MyReports";
 
 const App = () => {
   return (
@@ -13,6 +14,7 @@ const App = () => {
         <Route path="/signin" element={<Signin />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/report" element={<Report />} />
+        <Route path="/my-reports" element={<MyReports />} />
       </Routes>
     </BrowserRouter>
   );
