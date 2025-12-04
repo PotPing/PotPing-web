@@ -41,7 +41,7 @@ export default function StatusBadgeSelect({ value, onChange, disabled }) {
         className={`inline-flex items-center justify-center px-4 py-1.5 rounded-full text-sm font-medium ${style}`}
       >
         <span>{label}</span>
-        <IoIosArrowDown className="ml-2 text-[14px]" />
+        <IoIosArrowDown className="ml-2 text-[14px] cursor-pointer" />
       </button>
 
       {/* 드롭다운 메뉴 */}
