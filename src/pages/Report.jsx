@@ -336,7 +336,7 @@ export default function Report() {
                     </option>
                   ))}
                 </select>
-                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400 text-xs">
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400 text-xs cursor-pointer">
                   <IoIosArrowDown size={20} />
                 </span>
               </div>
@@ -364,7 +364,7 @@ export default function Report() {
                     </option>
                   ))}
                 </select>
-                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400 text-xs">
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400 text-xs ">
                   <IoIosArrowDown size={20} />
                 </span>
               </div>
@@ -377,7 +377,7 @@ export default function Report() {
               type="button"
               onClick={handleStartDriving}
               disabled={isDriving || isFetchingResult}
-              className={`min-w-[140px] h-11 rounded-md text-sm font-semibold transition ${
+              className={`min-w-[140px] h-11 rounded-md text-sm font-semibold transition cursor-pointer ${
                 isDriving || isFetchingResult
                   ? "bg-gray-600 text-gray-300 cursor-not-allowed"
                   : "bg-orange-500 hover:bg-orange-600 text-white"
@@ -390,7 +390,7 @@ export default function Report() {
               type="button"
               onClick={handleStopDriving}
               disabled={!isDriving || isFetchingResult}
-              className={`min-w-[140px] h-11 rounded-md text-sm font-semibold transition ${
+              className={`min-w-[140px] h-11 rounded-md text-sm font-semibold transition cursor-pointer ${
                 !isDriving || isFetchingResult
                   ? "bg-gray-700 text-gray-400 cursor-not-allowed"
                   : "bg-red-500 hover:bg-red-600 text-white"
@@ -457,7 +457,7 @@ export default function Report() {
                   <button
                     type="button"
                     onClick={handleGoReportHistory}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full border border-orange-400 text-sm font-medium text-orange-200 hover:bg-orange-500/10 hover:border-orange-300 transition"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full border border-orange-400 text-sm font-medium text-orange-200 hover:bg-orange-500/10 hover:border-orange-300 transition cursor-pointer"
                   >
                     <span>신고 내역 바로가기</span>
                     <IoChevronForward size={18} />
@@ -483,7 +483,7 @@ export default function Report() {
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="min-w-[140px] h-10 px-6 rounded-md border border-gray-400 text-sm text-gray-100 hover:bg-gray-700 transition"
+                  className="min-w-[140px] h-10 px-6 rounded-md border border-gray-400 text-sm text-gray-100 hover:bg-gray-700 transition cursor-pointer"
                 >
                   초기화
                 </button>
