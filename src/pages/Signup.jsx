@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import HeaderGuest from "../components/header/HeaderGuest";
 import userIcon from "../assets/user.png";
 import adminIcon from "../assets/admin.png";
+import { signup } from "../apis/auth";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -12,15 +13,41 @@ const Signup = () => {
   const [password, setPassword] = useState("");
   const [passwordCheck, setPasswordCheck] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // 회원가입 API 연동 해야함
-    console.log({ role, userId, password, passwordCheck });
-  };
 
-  const handleCheckDuplicate = () => {
-    // 아이디 중복 확인 API 연동 해야함
-    console.log("아이디 중복 확인:", userId);
+    if (!role) {
+      alert("사용자/관리자 역할을 선택해주세요.");
+      return;
+    }
+
+    if (!userId.trim()) {
+      alert("아이디를 입력해주세요.");
+      return;
+    }
+
+    if (!password) {
+      alert("비밀번호를 입력해주세요.");
+      return;
+    }
+
+    if (password !== passwordCheck) {
+      alert("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    try {
+      // 회원가입 API 호출
+      await signup({ role, userId, password });
+
+      alert("회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.");
+      navigate("/signin");
+    } catch (error) {
+      console.error("회원가입 실패:", error);
+      const message =
+        error.response?.data?.message || "회원가입 중 오류가 발생했습니다.";
+      alert(message);
+    }
   };
 
   const goLogin = () => navigate("/signin");
@@ -90,25 +117,15 @@ const Signup = () => {
               <label className="block text-sm">
                 아이디 <span className="text-[#f97316]">*</span>
               </label>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder="아이디를 입력해주세요"
-                  className="flex-1 h-11 px-3 rounded-md border border-white bg-transparent
-                             text-sm text-white placeholder:text-[#BCBCBC] focus:outline-none
-                             focus:border-[#f97316]"
-                />
-                <button
-                  type="button"
-                  onClick={handleCheckDuplicate}
-                  className="w-24 h-11 rounded-md bg-[#151F38] text-sm font-medium
-                             hover:bg-[#192543] cursor-pointer"
-                >
-                  중복확인
-                </button>
-              </div>
+              <input
+                type="text"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="아이디를 입력해주세요"
+                className="w-full h-11 px-3 rounded-md border border-white bg-transparent
+                           text-sm text-white placeholder:text-[#BCBCBC] focus:outline-none
+                           focus:border-[#f97316]"
+              />
             </div>
 
             {/* 비밀번호 */}
@@ -120,7 +137,7 @@ const Signup = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="영문자, 숫자 포함 8~12자"
+                placeholder="비밀번호를 입력해주세요"
                 className="w-full h-11 px-3 rounded-md border border-white bg-transparent
                            text-sm text-white placeholder:text-[#BCBCBC] focus:outline-none
                            focus:border-[#f97316]"
