@@ -25,10 +25,9 @@ const AuthProvider = ({ children }) => {
   }, []);
 
   /** 로그아웃 시 세션 스토리지 및 accessToken 초기화 */
-  const logout = useCallback(() => {
+ const logout = useCallback(() => {
     setAccessToken(null);
     clearStorage();
-    window.location.href = "/";
   }, []);
 
   /** 웹 전체에 전역으로 공급 */
