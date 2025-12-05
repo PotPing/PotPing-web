@@ -13,3 +13,14 @@ export const signup = async ({ role, userId, password }) => {
   const res = await api.post("/api/auth/signup", body);
   return res.data;
 };
+
+// 로그인 
+export const signin = async ({ userId, password }) => {
+  const body = {
+    username: userId,
+    password,
+  };
+
+  const res = await api.post("/api/auth/signin", body);
+  return res.data; 
+};

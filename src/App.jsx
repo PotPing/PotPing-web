@@ -8,20 +8,23 @@ import MyReports from "./pages/MyReports";
 import AdminReportList from "./pages/AdminReportList";
 import ReportDetailUser from "./pages/ReportDetailUser";
 import ReportDetailAdmin from "./pages/ReportDetailAdmin";
+import AuthProvider from "./contexts/AuthProvider"; 
 
 const App = () => {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/signin" element={<Signin />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/report" element={<Report />} />
-        <Route path="/my-reports" element={<MyReports />} />
-        <Route path="/admin/reports" element={<AdminReportList />} />
-        <Route path="/report/:id" element={<ReportDetailUser />} />
-        <Route path="/admin/report/:id" element={<ReportDetailAdmin />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/signin" element={<Signin />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/report" element={<Report />} />
+          <Route path="/my-reports" element={<MyReports />} />
+          <Route path="/admin/reports" element={<AdminReportList />} />
+          <Route path="/report/:id" element={<ReportDetailUser />} />
+          <Route path="/admin/report/:id" element={<ReportDetailAdmin />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 };
