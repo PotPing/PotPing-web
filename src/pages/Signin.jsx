@@ -1,17 +1,49 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import HeaderGuest from "../components/header/HeaderGuest";
+import { signin } from "../apis/auth";
+import AuthContext from "../contexts/AuthContext";
 
 const Signin = () => {
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
+
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
-    // 로그인 API 연동 해야함
-    console.log("로그인 시도:", { userId, password });
+
+    if (!userId.trim() || !password) {
+      alert("아이디와 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    try {
+      const data = await signin({ userId, password });
+      const token = data?.username || userId;
+      login(token);
+      sessionStorage.setItem("role", data.role);
+
+      alert("로그인에 성공했습니다.");
+
+      // role에 따라 페이지 분기
+      if (data.role === "ADMIN") {
+        navigate("/admin/reports");
+      } else if (data.role === "DRIVER") {
+        navigate("/report");
+      } else {
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("로그인 실패:", error);
+      const message =
+        error.response?.data?.message ||
+        "아이디 또는 비밀번호가 올바르지 않습니다.";
+      alert(message);
+    }
   };
+
 
   const goSignup = () => navigate("/signup");
 
