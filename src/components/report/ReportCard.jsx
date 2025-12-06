@@ -5,10 +5,6 @@ const STATUS_MAP = {
     label: "대기중",
     className: "border border-[#FF7A00] text-[#FF7A00] bg-transparent",
   },
-  IN_PROGRESS: {
-    label: "처리중",
-    className: "bg-white text-[#FF7A00]",
-  },
   DONE: {
     label: "완료됨",
     className: "bg-[#FF7A00] text-white",

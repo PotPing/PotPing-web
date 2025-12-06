@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import HeaderUser from "../components/header/HeaderUser";
-import samplePothole from "../assets/pothole_sample.png";
-import sampleHistogram from "../assets/pothole_histogram.png";
 import StatusBadgeSelect from "../components/report/StatusBadgeSelect";
+import { fetchPotholesBySession } from "../apis/potholeApi";
 
 const SEVERITY_LABEL = {
   HIGH: "High",
@@ -11,54 +10,92 @@ const SEVERITY_LABEL = {
   LOW: "Low",
 };
 
-const STATUS_OPTIONS = [
-  { value: "PENDING", label: "대기중" },
-  { value: "IN_PROGRESS", label: "처리중" },
-  { value: "COMPLETED", label: "완료" },
-];
-
 export default function ReportDetailAdmin() {
-  const { id } = useParams();
-  const [report, setReport] = useState(null);
-  const [status, setStatus] = useState("PENDING");
-  const [isUpdating, setIsUpdating] = useState(false);
+  const { id: reportId } = useParams(); 
+  const routerLocation = useLocation();
 
+  const sessionId = routerLocation.state?.sessionId; 
+  const initialStatus = routerLocation.state?.processStatus || "PENDING";
+  const initialRegion = routerLocation.state?.regionName || "";
+
+  const [report, setReport] = useState(null);
+  const [status, setStatus] = useState(initialStatus);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // 세션별 포트홀 조회
   useEffect(() => {
-    const dummy = {
-      id,
-      status: "PENDING",
-      location: "경상북도 경산시",
-      detectedAt: "2025-12-03 16:17:59",
-      severity: "MEDIUM",
-      detectionCount: 3,
-      reliabilityAvg: 80,
-      originalImageUrl: samplePothole,
-      equalizedImageUrl: sampleHistogram,
+    if (!sessionId) {
+      setError("세션 ID 정보가 없습니다. 목록 화면에서 다시 들어와 주세요.");
+      setLoading(false);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const potholes = await fetchPotholesBySession(sessionId);
+        if (!potholes || potholes.length === 0) {
+          setError("이 세션에서 감지된 포트홀이 없습니다.");
+          return;
+        }
+
+        const first = potholes[0]; 
+
+        const mapped = {
+          potholeId: first.id || first.potholeId, 
+          reportId, 
+          status: initialStatus,
+          location: initialRegion || first.regionName || "",
+          detectedAt: first.detectedAt,
+          severity: first.severity,
+          detectionCount: first.detectionCount,
+          reliabilityAvg: first.reliabilityAvg,
+          originalImageUrl: first.originalImageUrl,
+          equalizedImageUrl: first.equalizedImageUrl,
+        };
+
+        setReport(mapped);
+        setStatus(initialStatus);
+      } catch (e) {
+        console.error(e);
+        setError("포트홀 상세 정보를 불러오는 데 실패했습니다.");
+      } finally {
+        setLoading(false);
+      }
     };
-    setReport(dummy);
-    setStatus(dummy.status);
-  }, [id]);
+
+    load();
+  }, [sessionId, initialStatus, initialRegion, reportId]);
+
+  const handleChangeStatus = (nextStatus) => {
+    setStatus(nextStatus);
+    setReport((prev) => (prev ? { ...prev, status: nextStatus } : prev));
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0B1120] text-white">
+        <HeaderUser />
+        <main className="max-w-6xl mx-auto pt-10 px-6 pb-16">
+          <p>로딩 중입니다...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#0B1120] text-white">
+        <HeaderUser />
+        <main className="max-w-6xl mx-auto pt-10 px-6 pb-16">
+          <p className="text-red-400">{error}</p>
+        </main>
+      </div>
+    );
+  }
 
   if (!report) return null;
-
-  const handleChangeStatus = async (nextStatus) => {
-    const prevStatus = status;
-
-    setStatus(nextStatus);
-    try {
-      setIsUpdating(true);
-      // 상태 변경 API 연동 해야함
-      console.log("신고 상태 변경:", report.id, nextStatus);
-
-      setReport((prev) => ({ ...prev, status: nextStatus }));
-    } catch (err) {
-      console.error(err);
-      alert("상태 변경에 실패했습니다.");
-      setStatus(prevStatus);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
 
   const { location, detectedAt, severity, detectionCount, reliabilityAvg } =
     report;
@@ -73,15 +110,15 @@ export default function ReportDetailAdmin() {
           <section className="flex-1">
             <div className="flex items-center justify-between mb-3">
               <h1 className="text-[36px] font-semibold text-[#F97316]">
-                포트홀 {report.id}
+                포트홀 {report.potholeId}
               </h1>
 
               <div className="flex items-center gap-3">
                 <StatusBadgeSelect
-                  value={status}
-                  onChange={handleChangeStatus}
-                  disabled={isUpdating}
-                />
+  reportId={report.reportId} 
+  value={status}
+  onChange={handleChangeStatus}
+/>
               </div>
             </div>
 
@@ -126,9 +163,6 @@ export default function ReportDetailAdmin() {
                 })}
               </div>
             </div>
-
-            <InfoRow label="탐지 횟수" value={`${detectionCount} 회`} />
-            <InfoRow label="신뢰도 평균" value={`${reliabilityAvg}%`} />
 
             {/* 평활화 이미지 */}
             <div className="flex items-start gap-6 pt-4">

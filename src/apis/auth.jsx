@@ -22,10 +22,12 @@ export const signin = async ({ userId, password }) => {
   };
 
   const res = await api.post("/api/auth/signin", body);
-  const data = res.data;
+  const data = res.data; 
 
-  localStorage.setItem("userId", String(data.userId));  
-  localStorage.setItem("role", data.role);              
+  localStorage.setItem("userId", String(data.userId));
+  localStorage.setItem("username", data.username);
+  localStorage.setItem("password", password);
+  localStorage.setItem("role", data.role);
 
   return data;
 };

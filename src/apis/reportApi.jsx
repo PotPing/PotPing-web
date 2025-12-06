@@ -11,3 +11,8 @@ export const getMyReports = async () => {
   const res = await api.get("/api/report/me");
   return res.data; 
 };
+
+// 보수 완료 처리
+export const completeReport = async (reportId) => {
+  return api.post(`/api/report/${reportId}`);
+};
