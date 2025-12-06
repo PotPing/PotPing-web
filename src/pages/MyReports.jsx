@@ -7,11 +7,9 @@ import { getMyReports } from "../apis/reportApi";
 export default function MyReports() {
   const navigate = useNavigate();
 
-  // 로그인 정보 가져오기
   const storedUserId = localStorage.getItem("userId");
   const storedRole = localStorage.getItem("role");
 
-  // 역할에 따라 표시 이름 설정
   const displayName =
     storedRole === "ADMIN"
       ? `관리자 ${storedUserId}`
@@ -33,31 +31,32 @@ export default function MyReports() {
   };
 
   useEffect(() => {
-  const fetchMyReports = async () => {
-    try {
-      setLoading(true);
-      const data = await getMyReports();
-      // 최신순 정렬
-      const sorted = (data || []).sort(
-        (a, b) => new Date(b.reportedAt) - new Date(a.reportedAt)
-      );
+    const fetchMyReports = async () => {
+      try {
+        setLoading(true);
+        const data = await getMyReports();
 
-      setReports(sorted);
-    } catch (err) {
-      console.error("내 신고 내역 조회 실패:", err);
-      setError("신고 내역을 불러오지 못했어요.");
-    } finally {
-      setLoading(false);
-    }
-  };
+        const sorted = (data || []).sort(
+          (a, b) => new Date(b.reportedAt) - new Date(a.reportedAt)
+        );
 
-  fetchMyReports();
-}, []);
+        setReports(sorted);
+      } catch (err) {
+        console.error("내 신고 내역 조회 실패:", err);
+        setError("신고 내역을 불러오지 못했어요.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchMyReports();
+  }, []);
 
-  const handleCardClick = (reportId) => {
-    console.log("신고 상세 이동:", reportId);
-  };
+  const handleCardClick = (reportId, sessionId, processStatus) => {
+  navigate(`/report/${reportId}`, {
+    state: { sessionId, processStatus }, 
+  });
+};
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white">
@@ -73,13 +72,16 @@ export default function MyReports() {
           {loading && <p className="text-sm text-gray-300">불러오는 중...</p>}
           {error && <p className="text-sm text-red-400">{error}</p>}
           {!loading && !error && reports.length === 0 && (
-            <p className="text-sm text-gray-300">아직 신고한 내역이 없습니다.</p>
+            <p className="text-sm text-gray-300">
+              아직 신고한 내역이 없습니다.
+            </p>
           )}
 
           <div className="mt-4 space-y-6">
             {reports.map((report) => {
               const {
                 reportId,
+                sessionId,
                 regionName,
                 totalPotholesInSession,
                 processStatus,
@@ -95,7 +97,7 @@ export default function MyReports() {
                   date={date}
                   title={title}
                   status={mapStatus(processStatus)}
-                  onClick={() => handleCardClick(reportId)}
+                  onClick={() => handleCardClick(reportId, sessionId, processStatus)}
                 />
               );
             })}
