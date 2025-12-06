@@ -164,9 +164,6 @@ export default function ReportDetailAdmin() {
               </div>
             </div>
 
-            <InfoRow label="탐지 횟수" value={`${detectionCount} 회`} />
-            <InfoRow label="신뢰도 평균" value={`${reliabilityAvg}%`} />
-
             {/* 평활화 이미지 */}
             <div className="flex items-start gap-6 pt-4">
               <span className="w-24 text-gray-400 mt-2">평활화 이미지</span>
