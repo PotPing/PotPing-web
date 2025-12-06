@@ -8,3 +8,9 @@ export const startSession = async ({ userId, regionId }) => {
   });
   return res.data;
 };
+
+// 주행 종료: 세션 종료 및 종료 시간 기록
+export const endSession = async (sessionId) => {
+  const res = await api.post(`/api/session/${sessionId}/end`);
+  return res.data;
+};

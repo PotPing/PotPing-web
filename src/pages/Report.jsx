@@ -4,7 +4,7 @@ import { IoChevronForward } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import HeaderUser from "../components/header/HeaderUser";
 import { fetchRegions } from "../apis/regionApi";
-import { startSession } from "../apis/sessionApi";
+import { startSession, endSession } from "../apis/sessionApi";
 
 export default function Report() {
   const navigate = useNavigate();
@@ -104,8 +104,11 @@ export default function Report() {
         return;
       }
 
-      // 로그인 사용자 ID
       const userId = Number(localStorage.getItem("userId"));
+      if (!userId) {
+        setErrorMessage("로그인 정보가 없습니다. 다시 로그인해주세요.");
+        return;
+      }
 
       // 세션 시작 API 호출
       const newSessionId = await startSession({
@@ -138,24 +141,32 @@ export default function Report() {
       }
 
       if (!sessionId) {
-        console.warn("세션 ID 없이 주행 종료가 호출되었습니다.");
+        setErrorMessage("진행 중인 주행 세션이 없습니다.");
+        setIsFetchingResult(false);
+        return;
       }
 
-      // 임시 더미 데이터
-      const mockResult = {
-        potholeCount: 3, // 0이면 포트홀 없음
-        dangerScore: 72,
-        detectedAt: new Date().toLocaleString("ko-KR"),
+      // 세션 종료 API 호출
+      const message = await endSession(sessionId);
+      console.log("세션 종료:", message);
+
+      const now = new Date().toLocaleString("ko-KR");
+
+      // 현재는 포트홀 분석 결과 API가 없으므로,
+      // 분석 상태는 '아직 결과 없음(PENDING)'으로 둠
+      setResult({
         province: selectedProvinceName,
         city: selectedCityName,
-      };
-      await new Promise((r) => setTimeout(r, 700));
-
-      setResult(mockResult);
+        detectedAt: now,
+        message,
+        potholeCount: null, // 아직 분석 결과가 없음을 의미
+        dangerScore: null,
+      });
       setHasResult(true);
+      setSessionId(null);
     } catch (err) {
       console.error(err);
-      setErrorMessage("결과 조회 중 오류가 발생했습니다.");
+      setErrorMessage("주행 종료 요청 중 오류가 발생했습니다.");
     } finally {
       setIsFetchingResult(false);
     }
@@ -177,10 +188,18 @@ export default function Report() {
   };
 
   const cityOptions = cities;
+
+  // === 분석 상태 판별 ===
+  const hasPotholeCount =
+    result && typeof result.potholeCount === "number";
+
   const isPotholeDetected =
-    result && typeof result.potholeCount === "number"
-      ? result.potholeCount > 0
-      : false;
+    hasPotholeCount && result.potholeCount > 0; // 분석 완료 + 포트홀 있음
+
+  const isAnalyzedNoPothole =
+    hasPotholeCount && result.potholeCount === 0; // 분석 완료 + 포트홀 0개
+
+  const isAnalysisPending = result && !hasPotholeCount; // 주행 종료는 했지만 분석 결과 아직 없음
 
   // 버튼 비활성화 조건
   const isStartDisabled = isDriving || isFetchingResult || hasResult;
@@ -319,7 +338,7 @@ export default function Report() {
               </span>
             ) : hasResult ? (
               <span className="text-sky-400 font-semibold">
-                분석이 완료되었습니다.
+                분석 상태를 확인하세요.
               </span>
             ) : (
               <span className="text-gray-400">대기 중입니다.</span>
@@ -330,8 +349,9 @@ export default function Report() {
         {/* 결과 영역 */}
         <section className="mt-12">
           <h2 className="text-lg font-semibold mb-4">주행 결과</h2>
+
           {!hasResult || !result ? (
-            // 아직 결과 없음
+            // 아직 주행 종료 전 (아무 결과 없음)
             <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 text-center text-sm text-gray-400">
               아직 분석 결과가 없습니다.{" "}
               <span className="text-orange-400 font-semibold">
@@ -341,8 +361,8 @@ export default function Report() {
             </div>
           ) : (
             <>
-              {isPotholeDetected ? (
-                // 포트홀 감지됨
+              {isPotholeDetected && (
+                // ✅ 분석 완료 + 포트홀 감지됨
                 <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="flex-1 min-w-[220px] text-center md:text-left">
                     <p className="text-[18px] font-semibold text-orange-400 leading-relaxed">
@@ -357,9 +377,11 @@ export default function Report() {
                     <p className="mt-1 text-xs text-gray-400">
                       분석 시각: {result.detectedAt}
                     </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      포트홀 개수: {result.potholeCount}개
+                    </p>
                   </div>
 
-                  {/* 신고 내역 바로가기 버튼 */}
                   <button
                     type="button"
                     onClick={handleGoReportHistory}
@@ -369,11 +391,13 @@ export default function Report() {
                     <IoChevronForward size={18} />
                   </button>
                 </div>
-              ) : (
-                // 포트홀 감지 안 됨
+              )}
+
+              {isAnalyzedNoPothole && (
+                // 분석 완료 + 포트홀 0개
                 <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 text-center">
                   <p className="text-[18px] font-semibold text-sky-300">
-                    포트홀이 감지되지 않았습니다.
+                    분석 결과, 포트홀이 감지되지 않았습니다.
                   </p>
                   <p className="mt-2 text-sm text-gray-300">
                     선택한 구간에서 신고할 포트홀이 발견되지 않았습니다.
@@ -381,6 +405,27 @@ export default function Report() {
                   <p className="mt-1 text-xs text-gray-400">
                     분석 시각: {result.detectedAt}
                   </p>
+                </div>
+              )}
+
+              {isAnalysisPending && (
+                // 주행 종료는 했지만 아직 분석 결과가 없는 상태
+                <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 text-center">
+                  <p className="text-[18px] font-semibold text-sky-300">
+                    주행이 정상적으로 종료되었습니다.
+                  </p>
+                  <p className="mt-2 text-sm text-gray-300">
+                    포트홀 분석 결과는 현재 처리 중이며,
+                    추후 신고 내역에서 확인하실 수 있습니다.
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    종료 시각: {result.detectedAt}
+                  </p>
+                  {result.message && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      서버 응답: {result.message}
+                    </p>
+                  )}
                 </div>
               )}
 
