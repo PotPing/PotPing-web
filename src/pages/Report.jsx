@@ -4,11 +4,12 @@ import { IoChevronForward } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import HeaderUser from "../components/header/HeaderUser";
 import { fetchRegions } from "../apis/regionApi";
+import { startSession } from "../apis/sessionApi";
 
 export default function Report() {
   const navigate = useNavigate();
 
-  // 지역 상태 
+  // 지역 상태
   const [provinces, setProvinces] = useState([]);
   const [cities, setCities] = useState([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState(null);
@@ -21,6 +22,9 @@ export default function Report() {
   const [hasResult, setHasResult] = useState(false);
   const [result, setResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // 발급받은 세션 ID
+  const [sessionId, setSessionId] = useState(null);
 
   // 시/도 이름
   const selectedProvinceName = useMemo(
@@ -100,11 +104,23 @@ export default function Report() {
         return;
       }
 
+      // 로그인 사용자 ID
+      const userId = Number(localStorage.getItem("userId"));
 
+      // 세션 시작 API 호출
+      const newSessionId = await startSession({
+        userId,
+        regionId: selectedCityId,
+      });
+
+      setSessionId(newSessionId);
       setIsDriving(true);
+      console.log("세션 시작, ID:", newSessionId);
     } catch (err) {
       console.error(err);
       setErrorMessage("주행 시작 요청 중 오류가 발생했습니다.");
+      setIsDriving(false);
+      setSessionId(null);
     }
   };
 
@@ -121,8 +137,11 @@ export default function Report() {
         return;
       }
 
+      if (!sessionId) {
+        console.warn("세션 ID 없이 주행 종료가 호출되었습니다.");
+      }
 
-      // 임시 더미 데이터 
+      // 임시 더미 데이터
       const mockResult = {
         potholeCount: 3, // 0이면 포트홀 없음
         dangerScore: 72,
@@ -149,6 +168,7 @@ export default function Report() {
     setHasResult(false);
     setResult(null);
     setErrorMessage("");
+    setSessionId(null);
   };
 
   // 신고 내역 바로가기
