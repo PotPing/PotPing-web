@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import HeaderUser from "../components/header/HeaderUser";
 import MyReportCard from "../components/report/ReportCard";
-import { PROVINCES, CITIES_BY_PROVINCE } from "../constants/regions";
+import { fetchRegions } from "../apis/regionApi";
 
 const TABS = [
   { key: "NEW", label: "신고 내역" },
@@ -39,32 +39,86 @@ const MOCK_REPORTS = [
 
 export default function AdminReportList() {
   const [activeTab, setActiveTab] = useState("IN_PROGRESS");
-  const [province, setProvince] = useState("경상북도");
-  const [city, setCity] = useState("경산시");
 
-  const cityOptions = useMemo(
-    () => CITIES_BY_PROVINCE[province] || [],
-    [province]
+  // 시/도, 시/군/구 목록
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]); 
+
+  // 선택된 시/도, 시/군/구의 id
+  const [selectedProvinceId, setSelectedProvinceId] = useState(null);
+  const [selectedCityId, setSelectedCityId] = useState(null);
+
+  const [regionError, setRegionError] = useState("");
+
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        setRegionError("");
+        const data = await fetchRegions(); 
+        setProvinces(data);
+        if (data.length > 0) {
+          setSelectedProvinceId(data[0].id); 
+        }
+      } catch (e) {
+        console.error(e);
+        setRegionError("지역 정보를 불러오는 중 오류가 발생했습니다.");
+      }
+    };
+
+    loadProvinces();
+  }, []);
+
+  useEffect(() => {
+    const loadCities = async () => {
+      if (selectedProvinceId == null) return;
+      try {
+        setRegionError("");
+        const data = await fetchRegions(selectedProvinceId);
+        setCities(data);
+        if (data.length > 0) {
+          setSelectedCityId(data[0].id); 
+        } else {
+          setSelectedCityId(null);
+        }
+      } catch (e) {
+        console.error(e);
+        setRegionError("시/군/구 정보를 불러오는 중 오류가 발생했습니다.");
+      }
+    };
+
+    loadCities();
+  }, [selectedProvinceId]);
+
+  const selectedProvinceName = useMemo(
+    () => provinces.find((p) => p.id === selectedProvinceId)?.name || "",
+    [provinces, selectedProvinceId]
+  );
+
+  const selectedCityName = useMemo(
+    () => cities.find((c) => c.id === selectedCityId)?.name || "",
+    [cities, selectedCityId]
   );
 
   const handleProvinceChange = (e) => {
-    const nextProvince = e.target.value;
-    setProvince(nextProvince);
-    const firstCity = CITIES_BY_PROVINCE[nextProvince]?.[0] || "";
-    setCity(firstCity);
+    const nextId = e.target.value === "" ? null : Number(e.target.value);
+    setSelectedProvinceId(nextId);
   };
 
   const handleCityChange = (e) => {
-    setCity(e.target.value);
+    const nextId = e.target.value === "" ? null : Number(e.target.value);
+    setSelectedCityId(nextId);
   };
 
   // 탭 + 지역 필터를 모두 적용한 리스트
   const filteredReports = useMemo(() => {
-    return MOCK_REPORTS.filter(
-      (r) =>
-        r.status === activeTab && r.province === province && r.city === city
-    );
-  }, [activeTab, province, city]);
+    return MOCK_REPORTS.filter((r) => {
+      if (r.status !== activeTab) return false;
+      if (selectedProvinceName && r.province !== selectedProvinceName)
+        return false;
+      if (selectedCityName && r.city !== selectedCityName) return false;
+      return true;
+    });
+  }, [activeTab, selectedProvinceName, selectedCityName]);
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white">
@@ -98,13 +152,13 @@ export default function AdminReportList() {
           <div className="w-[220px]">
             <div className="relative">
               <select
-                value={province}
+                value={selectedProvinceId ?? ""}
                 onChange={handleProvinceChange}
                 className="w-full h-10 bg-[#111827] border border-[#4B5563] rounded-md px-4 pr-9 text-sm text-white appearance-none focus:outline-none"
               >
-                {PROVINCES.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
+                {provinces.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
                   </option>
                 ))}
               </select>
@@ -118,13 +172,13 @@ export default function AdminReportList() {
           <div className="w-[220px]">
             <div className="relative">
               <select
-                value={city}
+                value={selectedCityId ?? ""}
                 onChange={handleCityChange}
                 className="w-full h-10 bg-[#111827] border border-[#4B5563] rounded-md px-4 pr-9 text-sm text-white appearance-none focus:outline-none"
               >
-                {cityOptions.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
                   </option>
                 ))}
               </select>
@@ -134,6 +188,10 @@ export default function AdminReportList() {
             </div>
           </div>
         </div>
+
+        {regionError && (
+          <p className="mt-3 text-sm text-red-400">{regionError}</p>
+        )}
 
         {/* 신고 목록 */}
         <section className="mt-8 space-y-4">
@@ -149,8 +207,8 @@ export default function AdminReportList() {
                 title={report.title}
                 status={report.status}
                 onClick={() => {
-                  // navigate(`/admin/reports/${report.id}`);
                   console.log("신고 상세 이동:", report.id);
+                  navigate(`/admin/report/${report.id}`);
                 }}
               />
             ))
