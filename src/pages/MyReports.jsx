@@ -33,21 +33,27 @@ export default function MyReports() {
   };
 
   useEffect(() => {
-    const fetchMyReports = async () => {
-      try {
-        setLoading(true);
-        const data = await getMyReports();
-        setReports(data || []);
-      } catch (err) {
-        console.error("내 신고 내역 조회 실패:", err);
-        setError("신고 내역을 불러오지 못했어요.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchMyReports = async () => {
+    try {
+      setLoading(true);
+      const data = await getMyReports();
+      // 최신순 정렬
+      const sorted = (data || []).sort(
+        (a, b) => new Date(b.reportedAt) - new Date(a.reportedAt)
+      );
 
-    fetchMyReports();
-  }, []);
+      setReports(sorted);
+    } catch (err) {
+      console.error("내 신고 내역 조회 실패:", err);
+      setError("신고 내역을 불러오지 못했어요.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchMyReports();
+}, []);
+
 
   const handleCardClick = (reportId) => {
     console.log("신고 상세 이동:", reportId);
