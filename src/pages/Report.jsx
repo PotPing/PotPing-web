@@ -1,15 +1,19 @@
-import React, { useState } from "react";
-import HeaderUser from "../components/header/HeaderUser";
+import React, { useEffect, useMemo, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { IoChevronForward } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
-import { PROVINCES, CITIES_BY_PROVINCE } from "../constants/regions";
+import HeaderUser from "../components/header/HeaderUser";
+import { fetchRegions } from "../apis/regionApi";
 
 export default function Report() {
   const navigate = useNavigate();
 
-  const [province, setProvince] = useState("경상북도");
-  const [city, setCity] = useState("경산시");
+  // 지역 상태 
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState(null);
+  const [selectedCityId, setSelectedCityId] = useState(null);
+  const [regionError, setRegionError] = useState("");
 
   // 주행 상태 & 결과
   const [isDriving, setIsDriving] = useState(false);
@@ -18,16 +22,70 @@ export default function Report() {
   const [result, setResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleProvinceChange = (e) => {
-    const nextProvince = e.target.value;
-    setProvince(nextProvince);
+  // 시/도 이름
+  const selectedProvinceName = useMemo(
+    () => provinces.find((p) => p.id === selectedProvinceId)?.name || "",
+    [provinces, selectedProvinceId]
+  );
 
-    const firstCity = CITIES_BY_PROVINCE[nextProvince]?.[0] || "";
-    setCity(firstCity);
+  // 시/군/구 이름
+  const selectedCityName = useMemo(
+    () => cities.find((c) => c.id === selectedCityId)?.name || "",
+    [cities, selectedCityId]
+  );
+
+  // 시/도 목록 조회
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        setRegionError("");
+        const data = await fetchRegions(); // parentId 없이 호출 -> 시/도 목록
+        setProvinces(data);
+
+        if (data.length > 0) {
+          setSelectedProvinceId(data[0].id); // 첫 번째 시/도 기본 선택
+        }
+      } catch (e) {
+        console.error(e);
+        setRegionError("지역 정보를 불러오는 중 오류가 발생했습니다.");
+      }
+    };
+
+    loadProvinces();
+  }, []);
+
+  // 시/군/구 목록 조회 (선택된 시/도 기준)
+  useEffect(() => {
+    const loadCities = async () => {
+      if (selectedProvinceId == null) return;
+
+      try {
+        setRegionError("");
+        const data = await fetchRegions(selectedProvinceId); // 선택된 시/도의 하위 시/군/구
+        setCities(data);
+
+        if (data.length > 0) {
+          setSelectedCityId(data[0].id); // 첫 번째 시/군/구 기본 선택
+        } else {
+          setSelectedCityId(null);
+        }
+      } catch (e) {
+        console.error(e);
+        setRegionError("시/군/구 정보를 불러오는 중 오류가 발생했습니다.");
+      }
+    };
+
+    loadCities();
+  }, [selectedProvinceId]);
+
+  const handleProvinceChange = (e) => {
+    const nextId = e.target.value === "" ? null : Number(e.target.value);
+    setSelectedProvinceId(nextId);
   };
 
   const handleCityChange = (e) => {
-    setCity(e.target.value);
+    const nextId = e.target.value === "" ? null : Number(e.target.value);
+    setSelectedCityId(nextId);
   };
 
   // 주행 시작
@@ -37,7 +95,11 @@ export default function Report() {
       setHasResult(false);
       setResult(null);
 
-      // 실제 API 연동 해야함
+      if (!selectedProvinceId || !selectedCityId) {
+        setErrorMessage("지역을 먼저 선택해주세요.");
+        return;
+      }
+
 
       setIsDriving(true);
     } catch (err) {
@@ -53,15 +115,20 @@ export default function Report() {
       setIsDriving(false);
       setIsFetchingResult(true);
 
-      // 실제 API 연동 해야함
+      if (!selectedProvinceId || !selectedCityId) {
+        setErrorMessage("지역을 먼저 선택해주세요.");
+        setIsFetchingResult(false);
+        return;
+      }
 
-      // 임시 더미 데이터 (백엔드 연동 전)
+
+      // 임시 더미 데이터 
       const mockResult = {
         potholeCount: 3, // 0이면 포트홀 없음
         dangerScore: 72,
         detectedAt: new Date().toLocaleString("ko-KR"),
-        province,
-        city,
+        province: selectedProvinceName,
+        city: selectedCityName,
       };
       await new Promise((r) => setTimeout(r, 700));
 
@@ -89,7 +156,7 @@ export default function Report() {
     navigate("/my-reports");
   };
 
-  const cityOptions = CITIES_BY_PROVINCE[province] || [];
+  const cityOptions = cities;
   const isPotholeDetected =
     result && typeof result.potholeCount === "number"
       ? result.potholeCount > 0
@@ -122,6 +189,13 @@ export default function Report() {
           </div>
         )}
 
+        {/* 지역 관련 에러 */}
+        {regionError && (
+          <div className="mt-3 text-center text-sm text-red-400">
+            {regionError}
+          </div>
+        )}
+
         {/* 지역 선택 + 버튼 영역 */}
         <div className="mt-10 flex flex-col gap-6">
           {/* 지역 선택 드롭다운 */}
@@ -133,7 +207,7 @@ export default function Report() {
               </label>
               <div className="relative">
                 <select
-                  value={province}
+                  value={selectedProvinceId ?? ""}
                   onChange={handleProvinceChange}
                   disabled={isDriving || isFetchingResult || hasResult}
                   className={`w-full h-11 bg-[#111827] border border-[#4B5563] rounded-md px-4 pr-9 text-sm text-white appearance-none focus:outline-none ${
@@ -142,9 +216,9 @@ export default function Report() {
                       : ""
                   }`}
                 >
-                  {PROVINCES.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
+                  {provinces.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
                     </option>
                   ))}
                 </select>
@@ -161,7 +235,7 @@ export default function Report() {
               </label>
               <div className="relative">
                 <select
-                  value={city}
+                  value={selectedCityId ?? ""}
                   onChange={handleCityChange}
                   disabled={isDriving || isFetchingResult || hasResult}
                   className={`w-full h-11 bg-[#111827] border border-[#4B5563] rounded-md px-4 pr-9 text-sm text-white appearance-none focus:outline-none ${
@@ -171,8 +245,8 @@ export default function Report() {
                   }`}
                 >
                   {cityOptions.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                    <option key={c.id} value={c.id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
