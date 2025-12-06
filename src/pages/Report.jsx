@@ -1,15 +1,21 @@
-import React, { useState } from "react";
-import HeaderUser from "../components/header/HeaderUser";
+import React, { useEffect, useMemo, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { IoChevronForward } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
-import { PROVINCES, CITIES_BY_PROVINCE } from "../constants/regions";
+import HeaderUser from "../components/header/HeaderUser";
+import { fetchRegions } from "../apis/regionApi";
+import { startSession, endSession } from "../apis/sessionApi";
+import { fetchPotholesBySession } from "../apis/potholeApi";
 
 export default function Report() {
   const navigate = useNavigate();
 
-  const [province, setProvince] = useState("경상북도");
-  const [city, setCity] = useState("경산시");
+  // 지역 상태
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState(null);
+  const [selectedCityId, setSelectedCityId] = useState(null);
+  const [regionError, setRegionError] = useState("");
 
   // 주행 상태 & 결과
   const [isDriving, setIsDriving] = useState(false);
@@ -18,16 +24,73 @@ export default function Report() {
   const [result, setResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleProvinceChange = (e) => {
-    const nextProvince = e.target.value;
-    setProvince(nextProvince);
+  // 발급받은 세션 ID
+  const [sessionId, setSessionId] = useState(null);
 
-    const firstCity = CITIES_BY_PROVINCE[nextProvince]?.[0] || "";
-    setCity(firstCity);
+  // 시/도 이름
+  const selectedProvinceName = useMemo(
+    () => provinces.find((p) => p.id === selectedProvinceId)?.name || "",
+    [provinces, selectedProvinceId]
+  );
+
+  // 시/군/구 이름
+  const selectedCityName = useMemo(
+    () => cities.find((c) => c.id === selectedCityId)?.name || "",
+    [cities, selectedCityId]
+  );
+
+  // 시/도 목록 조회
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        setRegionError("");
+        const data = await fetchRegions(); // parentId 없이 호출 -> 시/도 목록
+        setProvinces(data);
+
+        if (data.length > 0) {
+          setSelectedProvinceId(data[0].id); // 첫 번째 시/도 기본 선택
+        }
+      } catch (e) {
+        console.error(e);
+        setRegionError("지역 정보를 불러오는 중 오류가 발생했습니다.");
+      }
+    };
+
+    loadProvinces();
+  }, []);
+
+  // 시/군/구 목록 조회 (선택된 시/도 기준)
+  useEffect(() => {
+    const loadCities = async () => {
+      if (selectedProvinceId == null) return;
+
+      try {
+        setRegionError("");
+        const data = await fetchRegions(selectedProvinceId); // 선택된 시/도의 하위 시/군/구
+        setCities(data);
+
+        if (data.length > 0) {
+          setSelectedCityId(data[0].id); // 첫 번째 시/군/구 기본 선택
+        } else {
+          setSelectedCityId(null);
+        }
+      } catch (e) {
+        console.error(e);
+        setRegionError("시/군/구 정보를 불러오는 중 오류가 발생했습니다.");
+      }
+    };
+
+    loadCities();
+  }, [selectedProvinceId]);
+
+  const handleProvinceChange = (e) => {
+    const nextId = e.target.value === "" ? null : Number(e.target.value);
+    setSelectedProvinceId(nextId);
   };
 
   const handleCityChange = (e) => {
-    setCity(e.target.value);
+    const nextId = e.target.value === "" ? null : Number(e.target.value);
+    setSelectedCityId(nextId);
   };
 
   // 주행 시작
@@ -37,12 +100,31 @@ export default function Report() {
       setHasResult(false);
       setResult(null);
 
-      // 실제 API 연동 해야함
+      if (!selectedProvinceId || !selectedCityId) {
+        setErrorMessage("지역을 먼저 선택해주세요.");
+        return;
+      }
 
+      const userId = Number(localStorage.getItem("userId"));
+      if (!userId) {
+        setErrorMessage("로그인 정보가 없습니다. 다시 로그인해주세요.");
+        return;
+      }
+
+      // 세션 시작 API 호출
+      const newSessionId = await startSession({
+        userId,
+        regionId: selectedCityId,
+      });
+
+      setSessionId(newSessionId);
       setIsDriving(true);
+      console.log("세션 시작, ID:", newSessionId);
     } catch (err) {
       console.error(err);
       setErrorMessage("주행 시작 요청 중 오류가 발생했습니다.");
+      setIsDriving(false);
+      setSessionId(null);
     }
   };
 
@@ -53,20 +135,43 @@ export default function Report() {
       setIsDriving(false);
       setIsFetchingResult(true);
 
-      // 실제 API 연동 해야함
+      if (!selectedProvinceId || !selectedCityId) {
+        setErrorMessage("지역을 먼저 선택해주세요.");
+        setIsFetchingResult(false);
+        return;
+      }
 
-      // 임시 더미 데이터 (백엔드 연동 전)
-      const mockResult = {
-        potholeCount: 3, // 0이면 포트홀 없음
-        dangerScore: 72,
-        detectedAt: new Date().toLocaleString("ko-KR"),
-        province,
-        city,
-      };
-      await new Promise((r) => setTimeout(r, 700));
+      if (!sessionId) {
+        setErrorMessage("진행 중인 주행 세션이 없습니다.");
+        setIsFetchingResult(false);
+        return;
+      }
 
-      setResult(mockResult);
+      // 세션 종료 API 호출
+      const message = await endSession(sessionId);
+      console.log("세션 종료:", message);
+
+      // 세션별 포트홀 목록 조회
+      const potholes = await fetchPotholesBySession(sessionId);
+      const potholeCount = Array.isArray(potholes) ? potholes.length : 0;
+
+      // 분석 시각: 마지막 포트홀 감지 시각 or 지금 시각
+      const detectedAt =
+        potholeCount > 0 && potholes[potholeCount - 1].detectedAt
+          ? new Date(potholes[potholeCount - 1].detectedAt).toLocaleString(
+              "ko-KR"
+            )
+          : new Date().toLocaleString("ko-KR");
+
+      setResult({
+        province: selectedProvinceName,
+        city: selectedCityName,
+        detectedAt,
+        message,
+        potholeCount,
+      });
       setHasResult(true);
+      setSessionId(null);
     } catch (err) {
       console.error(err);
       setErrorMessage("결과 조회 중 오류가 발생했습니다.");
@@ -82,6 +187,7 @@ export default function Report() {
     setHasResult(false);
     setResult(null);
     setErrorMessage("");
+    setSessionId(null);
   };
 
   // 신고 내역 바로가기
@@ -89,11 +195,19 @@ export default function Report() {
     navigate("/my-reports");
   };
 
-  const cityOptions = CITIES_BY_PROVINCE[province] || [];
+  const cityOptions = cities;
+
+  // === 분석 상태 판별 ===
+  const hasPotholeCount =
+    result && typeof result.potholeCount === "number";
+
   const isPotholeDetected =
-    result && typeof result.potholeCount === "number"
-      ? result.potholeCount > 0
-      : false;
+    hasPotholeCount && result.potholeCount > 0; // 분석 완료 + 포트홀 있음
+
+  const isAnalyzedNoPothole =
+    hasPotholeCount && result.potholeCount === 0; // 분석 완료 + 포트홀 0개
+
+  const isAnalysisPending = result && !hasPotholeCount; // (백업용) 결과 객체만 있고 개수는 없는 경우
 
   // 버튼 비활성화 조건
   const isStartDisabled = isDriving || isFetchingResult || hasResult;
@@ -122,6 +236,13 @@ export default function Report() {
           </div>
         )}
 
+        {/* 지역 관련 에러 */}
+        {regionError && (
+          <div className="mt-3 text-center text-sm text-red-400">
+            {regionError}
+          </div>
+        )}
+
         {/* 지역 선택 + 버튼 영역 */}
         <div className="mt-10 flex flex-col gap-6">
           {/* 지역 선택 드롭다운 */}
@@ -133,7 +254,7 @@ export default function Report() {
               </label>
               <div className="relative">
                 <select
-                  value={province}
+                  value={selectedProvinceId ?? ""}
                   onChange={handleProvinceChange}
                   disabled={isDriving || isFetchingResult || hasResult}
                   className={`w-full h-11 bg-[#111827] border border-[#4B5563] rounded-md px-4 pr-9 text-sm text-white appearance-none focus:outline-none ${
@@ -142,9 +263,9 @@ export default function Report() {
                       : ""
                   }`}
                 >
-                  {PROVINCES.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
+                  {provinces.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
                     </option>
                   ))}
                 </select>
@@ -161,7 +282,7 @@ export default function Report() {
               </label>
               <div className="relative">
                 <select
-                  value={city}
+                  value={selectedCityId ?? ""}
                   onChange={handleCityChange}
                   disabled={isDriving || isFetchingResult || hasResult}
                   className={`w-full h-11 bg-[#111827] border border-[#4B5563] rounded-md px-4 pr-9 text-sm text-white appearance-none focus:outline-none ${
@@ -171,8 +292,8 @@ export default function Report() {
                   }`}
                 >
                   {cityOptions.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                    <option key={c.id} value={c.id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -236,8 +357,9 @@ export default function Report() {
         {/* 결과 영역 */}
         <section className="mt-12">
           <h2 className="text-lg font-semibold mb-4">주행 결과</h2>
+
           {!hasResult || !result ? (
-            // 아직 결과 없음
+            // 아직 주행 종료 전 (아무 결과 없음)
             <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 text-center text-sm text-gray-400">
               아직 분석 결과가 없습니다.{" "}
               <span className="text-orange-400 font-semibold">
@@ -247,8 +369,8 @@ export default function Report() {
             </div>
           ) : (
             <>
-              {isPotholeDetected ? (
-                // 포트홀 감지됨
+              {isPotholeDetected && (
+                // 분석 완료 + 포트홀 감지됨
                 <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="flex-1 min-w-[220px] text-center md:text-left">
                     <p className="text-[18px] font-semibold text-orange-400 leading-relaxed">
@@ -265,7 +387,6 @@ export default function Report() {
                     </p>
                   </div>
 
-                  {/* 신고 내역 바로가기 버튼 */}
                   <button
                     type="button"
                     onClick={handleGoReportHistory}
@@ -275,17 +396,34 @@ export default function Report() {
                     <IoChevronForward size={18} />
                   </button>
                 </div>
-              ) : (
-                // 포트홀 감지 안 됨
+              )}
+
+              {isAnalyzedNoPothole && (
+                // 분석 완료 + 포트홀 0개
                 <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 text-center">
                   <p className="text-[18px] font-semibold text-sky-300">
-                    포트홀이 감지되지 않았습니다.
+                    분석 결과, 포트홀이 감지되지 않았습니다.
                   </p>
                   <p className="mt-2 text-sm text-gray-300">
                     선택한 구간에서 신고할 포트홀이 발견되지 않았습니다.
                   </p>
                   <p className="mt-1 text-xs text-gray-400">
                     분석 시각: {result.detectedAt}
+                  </p>
+                </div>
+              )}
+
+              {isAnalysisPending && (
+                // 주행 종료는 했지만 개수가 없는 경우
+                <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 text-center">
+                  <p className="text-[18px] font-semibold text-sky-300">
+                    주행이 정상적으로 종료되었습니다.
+                  </p>
+                  <p className="mt-2 text-sm text-gray-300">
+                    포트홀 분석 결과를 불러오는 중입니다.
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    종료 시각: {result.detectedAt}
                   </p>
                 </div>
               )}
