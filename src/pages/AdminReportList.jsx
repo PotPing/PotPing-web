@@ -8,30 +8,28 @@ import { fetchAllReports } from "../apis/reportApi";
 
 const TABS = [
   { key: "NEW", label: "신고 내역" },
-  { key: "IN_PROGRESS", label: "처리중" },
   { key: "DONE", label: "완료" },
 ];
 
 const PROCESS_STATUS_TO_TAB = {
   SUBMITTED: "NEW",
-  IN_PROGRESS: "IN_PROGRESS",
-  COMPLETED: "DONE",
+  DONE: "DONE",
 };
 
 export default function AdminReportList() {
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("IN_PROGRESS");
+  const [activeTab, setActiveTab] = useState("NEW");
 
   // 지역 상태
-  const [provinces, setProvinces] = useState([]); 
-  const [cities, setCities] = useState([]); 
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState(null);
   const [selectedCityId, setSelectedCityId] = useState(null);
   const [regionError, setRegionError] = useState("");
 
   // 신고 목록 상태
-  const [reports, setReports] = useState([]); 
+  const [reports, setReports] = useState([]);
   const [reportError, setReportError] = useState("");
   const [loadingReports, setLoadingReports] = useState(false);
 
@@ -42,7 +40,7 @@ export default function AdminReportList() {
         const data = await fetchRegions(); // parentId 없이 호출 -> 시/도 목록
         setProvinces(data);
         if (data.length > 0) {
-          setSelectedProvinceId(data[0].id); // 첫 시/도를 기본 선택
+          setSelectedProvinceId(data[0].id); // 첫 시/도 기본 선택
         }
       } catch (e) {
         console.error(e);
@@ -103,10 +101,13 @@ export default function AdminReportList() {
         const data = await fetchAllReports();
         const mapped = data.map((item) => {
           const region = item.regionName || "";
-          const [province, city] = region
-            .split(",")
+          const parts = region
+            .split(" ")
             .map((s) => s.trim())
             .filter(Boolean);
+
+          const province = parts[0] || "";
+          const city = parts[1] || "";
 
           const tabStatus =
             PROCESS_STATUS_TO_TAB[item.processStatus] || "NEW";
@@ -115,10 +116,10 @@ export default function AdminReportList() {
             id: item.reportId,
             date: item.reportedAt ? item.reportedAt.slice(0, 10) : "",
             title: `${region} 포트홀 ${item.totalPotholesInSession}개 감지`,
-            status: tabStatus,
+            status: tabStatus, 
             province,
             city,
-            raw: item, 
+            raw: item,
           };
         });
 
@@ -134,7 +135,6 @@ export default function AdminReportList() {
     loadReports();
   }, []);
 
-  // 필터링 
   const filteredReports = useMemo(() => {
     return reports.filter((r) => {
       if (r.status !== activeTab) return false;
