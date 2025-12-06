@@ -169,7 +169,6 @@ export default function Report() {
         detectedAt,
         message,
         potholeCount,
-        dangerScore,
       });
       setHasResult(true);
       setSessionId(null);
