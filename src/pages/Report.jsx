@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import HeaderUser from "../components/header/HeaderUser";
 import { fetchRegions } from "../apis/regionApi";
 import { startSession, endSession } from "../apis/sessionApi";
+import { fetchPotholesBySession } from "../apis/potholeApi";
 
 export default function Report() {
   const navigate = useNavigate();
@@ -150,23 +151,31 @@ export default function Report() {
       const message = await endSession(sessionId);
       console.log("세션 종료:", message);
 
-      const now = new Date().toLocaleString("ko-KR");
+      // 세션별 포트홀 목록 조회
+      const potholes = await fetchPotholesBySession(sessionId);
+      const potholeCount = Array.isArray(potholes) ? potholes.length : 0;
 
-      // 현재는 포트홀 분석 결과 API가 없으므로,
-      // 분석 상태는 '아직 결과 없음(PENDING)'으로 둠
+      // 분석 시각: 마지막 포트홀 감지 시각 or 지금 시각
+      const detectedAt =
+        potholeCount > 0 && potholes[potholeCount - 1].detectedAt
+          ? new Date(potholes[potholeCount - 1].detectedAt).toLocaleString(
+              "ko-KR"
+            )
+          : new Date().toLocaleString("ko-KR");
+
       setResult({
         province: selectedProvinceName,
         city: selectedCityName,
-        detectedAt: now,
+        detectedAt,
         message,
-        potholeCount: null, // 아직 분석 결과가 없음을 의미
-        dangerScore: null,
+        potholeCount,
+        dangerScore,
       });
       setHasResult(true);
       setSessionId(null);
     } catch (err) {
       console.error(err);
-      setErrorMessage("주행 종료 요청 중 오류가 발생했습니다.");
+      setErrorMessage("결과 조회 중 오류가 발생했습니다.");
     } finally {
       setIsFetchingResult(false);
     }
@@ -199,7 +208,7 @@ export default function Report() {
   const isAnalyzedNoPothole =
     hasPotholeCount && result.potholeCount === 0; // 분석 완료 + 포트홀 0개
 
-  const isAnalysisPending = result && !hasPotholeCount; // 주행 종료는 했지만 분석 결과 아직 없음
+  const isAnalysisPending = result && !hasPotholeCount; // (백업용) 결과 객체만 있고 개수는 없는 경우
 
   // 버튼 비활성화 조건
   const isStartDisabled = isDriving || isFetchingResult || hasResult;
@@ -338,7 +347,7 @@ export default function Report() {
               </span>
             ) : hasResult ? (
               <span className="text-sky-400 font-semibold">
-                분석 상태를 확인하세요.
+                분석이 완료되었습니다.
               </span>
             ) : (
               <span className="text-gray-400">대기 중입니다.</span>
@@ -362,7 +371,7 @@ export default function Report() {
           ) : (
             <>
               {isPotholeDetected && (
-                // ✅ 분석 완료 + 포트홀 감지됨
+                // 분석 완료 + 포트홀 감지됨
                 <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="flex-1 min-w-[220px] text-center md:text-left">
                     <p className="text-[18px] font-semibold text-orange-400 leading-relaxed">
@@ -376,9 +385,6 @@ export default function Report() {
                     </p>
                     <p className="mt-1 text-xs text-gray-400">
                       분석 시각: {result.detectedAt}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      포트홀 개수: {result.potholeCount}개
                     </p>
                   </div>
 
@@ -409,23 +415,17 @@ export default function Report() {
               )}
 
               {isAnalysisPending && (
-                // 주행 종료는 했지만 아직 분석 결과가 없는 상태
+                // 주행 종료는 했지만 개수가 없는 경우
                 <div className="w-full rounded-xl border border-dashed border-gray-600 bg-[#020617]/40 px-6 py-8 text-center">
                   <p className="text-[18px] font-semibold text-sky-300">
                     주행이 정상적으로 종료되었습니다.
                   </p>
                   <p className="mt-2 text-sm text-gray-300">
-                    포트홀 분석 결과는 현재 처리 중이며,
-                    추후 신고 내역에서 확인하실 수 있습니다.
+                    포트홀 분석 결과를 불러오는 중입니다.
                   </p>
                   <p className="mt-1 text-xs text-gray-400">
                     종료 시각: {result.detectedAt}
                   </p>
-                  {result.message && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      서버 응답: {result.message}
-                    </p>
-                  )}
                 </div>
               )}
 
