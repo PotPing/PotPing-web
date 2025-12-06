@@ -16,10 +16,13 @@ const SEVERITY_LABEL = {
 export default function ReportDetailUser() {
   const { id } = useParams();
   const routerLocation = useLocation();
+
   const sessionId = routerLocation.state?.sessionId;
   const processStatus = routerLocation.state?.processStatus;
+  const regionNameFromList = routerLocation.state?.regionName; 
+
   const initialStatus = processStatus === "DONE" ? "DONE" : "PENDING";
-  const [badgeStatus] = useState(initialStatus); 
+  const badgeStatus = initialStatus;
 
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +50,7 @@ export default function ReportDetailUser() {
       potholeId: first.potholeId,
       sessionId,
       potholeStatus: first.status,
-      location: first.regionName,
+      location: regionNameFromList || first.regionName || "",
       detectedAt,
       severity: highestSeverity,
       detectionCount: potholes.length,

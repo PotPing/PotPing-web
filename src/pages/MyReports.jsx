@@ -52,11 +52,20 @@ export default function MyReports() {
     fetchMyReports();
   }, []);
 
-  const handleCardClick = (reportId, sessionId, processStatus) => {
-  navigate(`/report/${reportId}`, {
-    state: { sessionId, processStatus }, 
-  });
-};
+  const handleCardClick = (
+    reportId,
+    sessionId,
+    processStatus,
+    regionName
+  ) => {
+    navigate(`/report/${reportId}`, {
+      state: {
+        sessionId,
+        processStatus,
+        regionName, 
+      },
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white">
@@ -97,7 +106,14 @@ export default function MyReports() {
                   date={date}
                   title={title}
                   status={mapStatus(processStatus)}
-                  onClick={() => handleCardClick(reportId, sessionId, processStatus)}
+                  onClick={() =>
+                    handleCardClick(
+                      reportId,
+                      sessionId,
+                      processStatus,
+                      regionName
+                    )
+                  }
                 />
               );
             })}
