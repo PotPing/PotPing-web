@@ -116,9 +116,13 @@ export default function AdminReportList() {
             id: item.reportId,
             date: item.reportedAt ? item.reportedAt.slice(0, 10) : "",
             title: `${region} 포트홀 ${item.totalPotholesInSession}개 감지`,
-            status: tabStatus, 
+            status: tabStatus,
             province,
             city,
+            sessionId: item.sessionId,
+            processStatus: item.processStatus,
+            regionName: item.regionName,
+
             raw: item,
           };
         });
@@ -250,7 +254,14 @@ export default function AdminReportList() {
                 status={report.status}
                 onClick={() => {
                   console.log("신고 상세 이동:", report.id);
-                  navigate(`/admin/report/${report.id}`);
+
+                  navigate(`/admin/report/${report.id}`, {
+                    state: {
+                      sessionId: report.sessionId,
+                      regionName: report.regionName,
+                      processStatus: report.processStatus,
+                    },
+                  });
                 }}
               />
             ))}
