@@ -14,7 +14,7 @@ export const signup = async ({ role, userId, password }) => {
   return res.data;
 };
 
-// 로그인 
+// 로그인
 export const signin = async ({ userId, password }) => {
   const body = {
     username: userId,
@@ -22,7 +22,12 @@ export const signin = async ({ userId, password }) => {
   };
 
   const res = await api.post("/api/auth/signin", body);
-  return res.data; 
+  const data = res.data;
+
+  localStorage.setItem("userId", String(data.userId));  
+  localStorage.setItem("role", data.role);              
+
+  return data;
 };
 
 // 로그아웃 
