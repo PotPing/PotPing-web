@@ -3,19 +3,16 @@ import { IoIosArrowDown } from "react-icons/io";
 
 const STATUS_LABEL = {
   PENDING: "대기중",
-  IN_PROGRESS: "처리중",
   COMPLETED: "완료",
 };
 
 const STATUS_STYLE = {
   PENDING: "bg-[#F97316]/10 text-[#FDBA74] border border-[#FDBA74]/40",
-  IN_PROGRESS: "bg-[#3B82F6]/10 text-[#93C5FD] border border-[#93C5FD]/40",
   COMPLETED: "bg-[#22C55E]/10 text-[#A7F3D0] border border-[#A7F3D0]/40",
 };
 
 const STATUS_OPTIONS = [
   { value: "PENDING", label: "대기중" },
-  { value: "IN_PROGRESS", label: "처리중" },
   { value: "COMPLETED", label: "완료" },
 ];
 
