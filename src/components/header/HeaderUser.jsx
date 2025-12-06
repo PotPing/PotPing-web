@@ -9,7 +9,7 @@ export default function HeaderUser() {
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
 
-  const goMyPage = () => navigate("/mypage");
+  const goMyPage = () => navigate("/my-reports");
 
   const handleLogout = async () => {
     try {
