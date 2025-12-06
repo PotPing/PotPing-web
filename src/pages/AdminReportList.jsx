@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
+import { useNavigate } from "react-router-dom";
 import HeaderUser from "../components/header/HeaderUser";
 import MyReportCard from "../components/report/ReportCard";
 import { fetchRegions } from "../apis/regionApi";
+import { fetchAllReports } from "../apis/reportApi";
 
 const TABS = [
   { key: "NEW", label: "신고 내역" },
@@ -10,54 +12,37 @@ const TABS = [
   { key: "DONE", label: "완료" },
 ];
 
-const MOCK_REPORTS = [
-  {
-    id: 1,
-    date: "2025-11-30",
-    title: "경산시 대학교 포트홀 2개 감지",
-    status: "NEW",
-    province: "경상북도",
-    city: "경산시",
-  },
-  {
-    id: 2,
-    date: "2025-11-30",
-    title: "경산시 대학교 포트홀 2개 감지",
-    status: "IN_PROGRESS",
-    province: "경상북도",
-    city: "경산시",
-  },
-  {
-    id: 3,
-    date: "2025-11-30",
-    title: "경산시 대학교 포트홀 2개 감지",
-    status: "DONE",
-    province: "경상북도",
-    city: "경산시",
-  },
-];
+const PROCESS_STATUS_TO_TAB = {
+  SUBMITTED: "NEW",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETED: "DONE",
+};
 
 export default function AdminReportList() {
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState("IN_PROGRESS");
 
-  // 시/도, 시/군/구 목록
-  const [provinces, setProvinces] = useState([]);
+  // 지역 상태
+  const [provinces, setProvinces] = useState([]); 
   const [cities, setCities] = useState([]); 
-
-  // 선택된 시/도, 시/군/구의 id
   const [selectedProvinceId, setSelectedProvinceId] = useState(null);
   const [selectedCityId, setSelectedCityId] = useState(null);
-
   const [regionError, setRegionError] = useState("");
+
+  // 신고 목록 상태
+  const [reports, setReports] = useState([]); 
+  const [reportError, setReportError] = useState("");
+  const [loadingReports, setLoadingReports] = useState(false);
 
   useEffect(() => {
     const loadProvinces = async () => {
       try {
         setRegionError("");
-        const data = await fetchRegions(); 
+        const data = await fetchRegions(); // parentId 없이 호출 -> 시/도 목록
         setProvinces(data);
         if (data.length > 0) {
-          setSelectedProvinceId(data[0].id); 
+          setSelectedProvinceId(data[0].id); // 첫 시/도를 기본 선택
         }
       } catch (e) {
         console.error(e);
@@ -73,10 +58,10 @@ export default function AdminReportList() {
       if (selectedProvinceId == null) return;
       try {
         setRegionError("");
-        const data = await fetchRegions(selectedProvinceId);
+        const data = await fetchRegions(selectedProvinceId); // 선택된 시/도의 하위 시/군/구
         setCities(data);
         if (data.length > 0) {
-          setSelectedCityId(data[0].id); 
+          setSelectedCityId(data[0].id);
         } else {
           setSelectedCityId(null);
         }
@@ -109,16 +94,56 @@ export default function AdminReportList() {
     setSelectedCityId(nextId);
   };
 
-  // 탭 + 지역 필터를 모두 적용한 리스트
+  useEffect(() => {
+    const loadReports = async () => {
+      try {
+        setLoadingReports(true);
+        setReportError("");
+
+        const data = await fetchAllReports();
+        const mapped = data.map((item) => {
+          const region = item.regionName || "";
+          const [province, city] = region
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+          const tabStatus =
+            PROCESS_STATUS_TO_TAB[item.processStatus] || "NEW";
+
+          return {
+            id: item.reportId,
+            date: item.reportedAt ? item.reportedAt.slice(0, 10) : "",
+            title: `${region} 포트홀 ${item.totalPotholesInSession}개 감지`,
+            status: tabStatus,
+            province,
+            city,
+            raw: item, 
+          };
+        });
+
+        setReports(mapped);
+      } catch (e) {
+        console.error(e);
+        setReportError("신고 목록을 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setLoadingReports(false);
+      }
+    };
+
+    loadReports();
+  }, []);
+
+  // 필터링 
   const filteredReports = useMemo(() => {
-    return MOCK_REPORTS.filter((r) => {
+    return reports.filter((r) => {
       if (r.status !== activeTab) return false;
       if (selectedProvinceName && r.province !== selectedProvinceName)
         return false;
       if (selectedCityName && r.city !== selectedCityName) return false;
       return true;
     });
-  }, [activeTab, selectedProvinceName, selectedCityName]);
+  }, [reports, activeTab, selectedProvinceName, selectedCityName]);
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white">
@@ -195,11 +220,28 @@ export default function AdminReportList() {
 
         {/* 신고 목록 */}
         <section className="mt-8 space-y-4">
-          {filteredReports.length === 0 ? (
-            <div className="w-full rounded-xl bg-[#020617] border border-dashed border-[#374151] px-6 py-8 text-center text-sm text-gray-400">
-              선택한 탭과 지역에 해당하는 신고가 없습니다.
+          {loadingReports && (
+            <div className="w-full rounded-xl bg-[#020617] border border-[#374151] px-6 py-8 text-center text-sm text-gray-300">
+              신고 목록을 불러오는 중입니다...
             </div>
-          ) : (
+          )}
+
+          {reportError && !loadingReports && (
+            <div className="w-full rounded-xl bg-[#020617] border border-red-500 px-6 py-8 text-center text-sm text-red-300">
+              {reportError}
+            </div>
+          )}
+
+          {!loadingReports &&
+            !reportError &&
+            filteredReports.length === 0 && (
+              <div className="w-full rounded-xl bg-[#020617] border border-dashed border-[#374151] px-6 py-8 text-center text-sm text-gray-400">
+                선택한 탭과 지역에 해당하는 신고가 없습니다.
+              </div>
+            )}
+
+          {!loadingReports &&
+            !reportError &&
             filteredReports.map((report) => (
               <MyReportCard
                 key={report.id}
@@ -211,8 +253,7 @@ export default function AdminReportList() {
                   navigate(`/admin/report/${report.id}`);
                 }}
               />
-            ))
-          )}
+            ))}
         </section>
       </main>
     </div>
