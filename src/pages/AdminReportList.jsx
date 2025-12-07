@@ -99,33 +99,36 @@ export default function AdminReportList() {
         setReportError("");
 
         const data = await fetchAllReports();
-        const mapped = data.map((item) => {
-          const region = item.regionName || "";
-          const parts = region
-            .split(" ")
-            .map((s) => s.trim())
-            .filter(Boolean);
+        const mapped = data
+  .map((item) => {
+    const region = item.regionName || "";
+    const parts = region
+      .split(" ")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-          const province = parts[0] || "";
-          const city = parts[1] || "";
+    const province = parts[0] || "";
+    const city = parts[1] || "";
 
-          const tabStatus =
-            PROCESS_STATUS_TO_TAB[item.processStatus] || "NEW";
+    const tabStatus =
+      PROCESS_STATUS_TO_TAB[item.processStatus] || "NEW";
 
-          return {
-            id: item.reportId,
-            date: item.reportedAt ? item.reportedAt.slice(0, 10) : "",
-            title: `${region} 포트홀 ${item.totalPotholesInSession}개 감지`,
-            status: tabStatus,
-            province,
-            city,
-            sessionId: item.sessionId,
-            processStatus: item.processStatus,
-            regionName: item.regionName,
+    return {
+      id: item.reportId,
+      date: item.reportedAt ? item.reportedAt.slice(0, 10) : "",
+      title: `${region} 포트홀 ${item.totalPotholesInSession}개 감지`,
+      status: tabStatus,
+      province,
+      city,
+      sessionId: item.sessionId,
+      processStatus: item.processStatus,
+      regionName: item.regionName,
+      reportedAt: item.reportedAt, 
+      raw: item,
+    };
+  })
+  .sort((a, b) => new Date(b.reportedAt) - new Date(a.reportedAt));
 
-            raw: item,
-          };
-        });
 
         setReports(mapped);
       } catch (e) {

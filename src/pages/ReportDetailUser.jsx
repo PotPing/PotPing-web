@@ -13,13 +13,25 @@ const SEVERITY_LABEL = {
   LOW: "Low",
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+
+const getServerBaseUrl = () => {
+  return API_BASE_URL.replace(/\/api\/?$/i, "").replace(/\/+$/g, "");
+};
+
+const makePotholeImageUrl = (fileName) => {
+  if (!fileName) return null;
+  const base = getServerBaseUrl();
+  return `${base}/pothole-images/${fileName}`;
+};
+
 export default function ReportDetailUser() {
   const { id } = useParams();
   const routerLocation = useLocation();
 
   const sessionId = routerLocation.state?.sessionId;
   const processStatus = routerLocation.state?.processStatus;
-  const regionNameFromList = routerLocation.state?.regionName; 
+  const regionNameFromList = routerLocation.state?.regionName;
 
   const initialStatus = processStatus === "DONE" ? "DONE" : "PENDING";
   const badgeStatus = initialStatus;
@@ -45,6 +57,12 @@ export default function ReportDetailUser() {
     const detectedAt =
       first.detectedAt?.replace("T", " ").slice(0, 19) ?? first.detectedAt;
 
+    const originalImageUrl =
+      makePotholeImageUrl(first.originalImg) || samplePothole;
+
+    const equalizedImageUrl =
+      makePotholeImageUrl(first.processedImg) || sampleHistogram;
+
     return {
       id: reportId,
       potholeId: first.potholeId,
@@ -55,8 +73,8 @@ export default function ReportDetailUser() {
       severity: highestSeverity,
       detectionCount: potholes.length,
       reliabilityAvg: null,
-      originalImageUrl: first.originalImg || samplePothole,
-      equalizedImageUrl: first.processedImg || sampleHistogram,
+      originalImageUrl,
+      equalizedImageUrl,
     };
   };
 
@@ -143,7 +161,7 @@ export default function ReportDetailUser() {
               <StatusBadge status={badgeStatus} />
             </div>
 
-            <div className="w-full max-w-[640px] rounded-xl overflow-hidden bg-black/40 border border-white/5">
+            <div className="w-full max-w-[640px] overflow-hidden bg-black/40 border border-white/5">
               <img
                 src={report.originalImageUrl}
                 alt="포트홀 원본 이미지"
@@ -187,7 +205,7 @@ export default function ReportDetailUser() {
             {/* 평활화 이미지 */}
             <div className="flex items-start gap-6 pt-4">
               <span className="w-24 text-gray-400 mt-2">평활화 이미지</span>
-              <div className="w-full max-w-[360px] aspect-video rounded-xl overflow-hidden bg-black/40 border border-white/5">
+              <div className="w-full max-w-[360px] aspect-video overflow-hidden bg-black/40 border border-white/5">
                 <img
                   src={report.equalizedImageUrl}
                   alt="히스토그램 평활화 결과 이미지"
