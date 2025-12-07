@@ -1,7 +1,9 @@
 import React from "react";
 import HeaderGuest from "../components/header/HeaderGuest";
+import { useNavigate } from "react-router-dom";
 
 const Landing = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-[#0B1120] text-white flex flex-col">
       <HeaderGuest />
@@ -23,7 +25,7 @@ const Landing = () => {
 
           <div className="flex gap-4">
             <button
-              onClick={() => navigate("/report")}
+              onClick={() => navigate("/signin")}
               className="w-[182px] h-[52px] rounded-md text-[#FF6800] border-2 border-[#FF6800] bg-transparent font-medium text-[18px]
                          hover:bg-[#FF6800]/5 cursor-pointer"
             >
@@ -31,7 +33,7 @@ const Landing = () => {
             </button>
 
             <button
-              onClick={() => navigate("/admin")}
+              onClick={() => navigate("/signin")}
               className="w-[182px] h-[52px] rounded-md border-2 border-white text-sm font-medium text-white text-[18px]
                          hover:bg-white/5 cursor-pointer"
             >
