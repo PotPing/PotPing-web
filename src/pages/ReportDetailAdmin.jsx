@@ -4,17 +4,32 @@ import HeaderUser from "../components/header/HeaderUser";
 import StatusBadgeSelect from "../components/report/StatusBadgeSelect";
 import { fetchPotholesBySession } from "../apis/potholeApi";
 
+import samplePothole from "../assets/pothole_sample.png";
+import sampleHistogram from "../assets/pothole_histogram.png";
+
 const SEVERITY_LABEL = {
   HIGH: "High",
   MEDIUM: "Medium",
   LOW: "Low",
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+
+const getServerBaseUrl = () => {
+  return API_BASE_URL.replace(/\/api\/?$/i, "").replace(/\/+$/g, "");
+};
+
+const makePotholeImageUrl = (fileName) => {
+  if (!fileName) return null;
+  const base = getServerBaseUrl();
+  return `${base}/pothole-images/${fileName}`;
+};
+
 export default function ReportDetailAdmin() {
-  const { id: reportId } = useParams(); 
+  const { id: reportId } = useParams();
   const routerLocation = useLocation();
 
-  const sessionId = routerLocation.state?.sessionId; 
+  const sessionId = routerLocation.state?.sessionId;
   const initialStatus = routerLocation.state?.processStatus || "PENDING";
   const initialRegion = routerLocation.state?.regionName || "";
 
@@ -40,19 +55,21 @@ export default function ReportDetailAdmin() {
           return;
         }
 
-        const first = potholes[0]; 
+        const first = potholes[0];
 
         const mapped = {
-          potholeId: first.id || first.potholeId, 
-          reportId, 
+          potholeId: first.id || first.potholeId,
+          reportId,
           status: initialStatus,
           location: initialRegion || first.regionName || "",
           detectedAt: first.detectedAt,
           severity: first.severity,
           detectionCount: first.detectionCount,
           reliabilityAvg: first.reliabilityAvg,
-          originalImageUrl: first.originalImageUrl,
-          equalizedImageUrl: first.equalizedImageUrl,
+          originalImageUrl:
+            makePotholeImageUrl(first.originalImg) || samplePothole,
+          equalizedImageUrl:
+            makePotholeImageUrl(first.processedImg) || sampleHistogram,
         };
 
         setReport(mapped);
@@ -115,10 +132,10 @@ export default function ReportDetailAdmin() {
 
               <div className="flex items-center gap-3">
                 <StatusBadgeSelect
-  reportId={report.reportId} 
-  value={status}
-  onChange={handleChangeStatus}
-/>
+                  reportId={report.reportId}
+                  value={status}
+                  onChange={handleChangeStatus}
+                />
               </div>
             </div>
 
