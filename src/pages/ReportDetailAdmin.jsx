@@ -57,6 +57,17 @@ export default function ReportDetailAdmin() {
 
         const first = potholes[0];
 
+        // 여러 포트홀의 이미지들을 배열로 생성
+        const originalImages = potholes.map((p) => {
+          const url = makePotholeImageUrl(p.originalImg);
+          return url || samplePothole;
+        });
+
+        const equalizedImages = potholes.map((p) => {
+          const url = makePotholeImageUrl(p.processedImg);
+          return url || sampleHistogram;
+        });
+
         const mapped = {
           potholeId: first.id || first.potholeId,
           reportId,
@@ -64,12 +75,10 @@ export default function ReportDetailAdmin() {
           location: initialRegion || first.regionName || "",
           detectedAt: first.detectedAt,
           severity: first.severity,
-          detectionCount: first.detectionCount,
+          detectionCount: potholes.length,
           reliabilityAvg: first.reliabilityAvg,
-          originalImageUrl:
-            makePotholeImageUrl(first.originalImg) || samplePothole,
-          equalizedImageUrl:
-            makePotholeImageUrl(first.processedImg) || sampleHistogram,
+          originalImages,
+          equalizedImages,
         };
 
         setReport(mapped);
@@ -114,8 +123,18 @@ export default function ReportDetailAdmin() {
 
   if (!report) return null;
 
-  const { location, detectedAt, severity, detectionCount, reliabilityAvg } =
-    report;
+  const {
+    location,
+    detectedAt,
+    severity,
+    detectionCount,
+    reliabilityAvg,
+    originalImages: rawOriginalImages,
+    equalizedImages: rawEqualizedImages,
+  } = report;
+
+  const originalImages = rawOriginalImages ?? [];
+  const equalizedImages = rawEqualizedImages ?? [];
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white">
@@ -123,11 +142,16 @@ export default function ReportDetailAdmin() {
 
       <main className="max-w-6xl mx-auto pt-10 px-6 pb-16">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* 왼쪽 */}
+          {/* 왼쪽: 원본 이미지들 */}
           <section className="flex-1">
             <div className="flex items-center justify-between mb-3">
               <h1 className="text-[36px] font-semibold text-[#F97316]">
                 포트홀 {report.potholeId}
+                {detectionCount > 1 && (
+                  <span className="ml-3 text-base text-gray-300">
+                    (총 {detectionCount}개 감지)
+                  </span>
+                )}
               </h1>
 
               <div className="flex items-center gap-3">
@@ -139,13 +163,19 @@ export default function ReportDetailAdmin() {
               </div>
             </div>
 
-            {/* 이미지 */}
-            <div className="w-full max-w-[640px] overflow-hidden bg-black/40 border border-white/5">
-              <img
-                src={report.originalImageUrl}
-                alt="포트홀 원본 이미지"
-                className="w-full h-full object-cover"
-              />
+            <div className="space-y-4">
+              {originalImages.map((src, idx) => (
+                <div
+                  key={idx}
+                  className="w-full max-w-[640px] overflow-hidden bg-black/40 border border-white/5"
+                >
+                  <img
+                    src={src}
+                    alt={`포트홀 원본 이미지 ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
             </div>
           </section>
 
@@ -181,15 +211,22 @@ export default function ReportDetailAdmin() {
               </div>
             </div>
 
-            {/* 평활화 이미지 */}
+            {/* 평활화 이미지들 */}
             <div className="flex items-start gap-6 pt-4">
               <span className="w-24 text-gray-400 mt-2">평활화 이미지</span>
-              <div className="w-full max-w-[360px] aspect-video overflow-hidden bg-black/40 border border-white/5">
-                <img
-                  src={report.equalizedImageUrl}
-                  alt="히스토그램 평활화 결과 이미지"
-                  className="w-full h-full object-cover"
-                />
+              <div className="flex-1 space-y-4">
+                {equalizedImages.map((src, idx) => (
+                  <div
+                    key={idx}
+                    className="w-full max-w-[360px] aspect-video overflow-hidden bg-black/40 border border-white/5"
+                  >
+                    <img
+                      src={src}
+                      alt={`히스토그램 평활화 결과 이미지 ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </section>
